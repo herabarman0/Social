@@ -1,1 +1,479 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="author" content="HeraSoft">
+<meta name="copyright" content="© 2025 HeraSoft. All rights reserved.">
+<meta name="description" content="Post.HS - HeraSoft Social Platform. বন্ধু ও পরিবারের সাথে যুক্ত থাকুন।">
+<meta property="og:site_name" content="Post.HS by HeraSoft">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Post.HS - HeraSoft Social Platform</title>
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="style.css">
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div id="authScreen">
+  <div class="auth-box">
+    <div class="auth-logo">post<span>.com</span></div>
+    <div class="auth-tagline">HeraSoft — আপনার নিজস্ব সোশ্যাল প্ল্যাটফর্ম</div>
+    <p style="font-size:.95rem;color:var(--text-secondary);margin-bottom:24px;line-height:1.6;">Post.HS-এ আপনার মুহূর্ত শেয়ার করুন, বন্ধুদের সাথে যুক্ত থাকুন।</p>
+    <button class="btn-google" onclick="loginWithGoogle()">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+      Google দিয়ে লগইন করুন
+    </button>
+    <hr class="auth-divider">
+    <div class="auth-footer">লগইন করে আপনি আমাদের <a href="#" style="color:var(--primary)">শর্তাবলী</a> ও <a href="#" style="color:var(--primary)">গোপনীয়তা নীতি</a>তে সম্মত হচ্ছেন।</div>
+    <div style="margin-top:12px;font-size:.8rem;color:var(--text-secondary)">© 2025 HeraSoft • Post.HS — সর্বস্বত্ব সংরক্ষিত</div>
+  </div>
+</div>
+
+<!-- NAVBAR -->
+<nav id="navbar" style="display:none">
+  <div class="nav-logo" onclick="showMainApp()">post<span>.com</span></div>
+  <div class="nav-search">
+    <i class="fas fa-search" style="color:var(--text-secondary)"></i>
+    <input type="text" placeholder="মানুষ খুঁজুন..." id="searchInput" oninput="handleSearch(this.value)" onfocus="showSearchResults()" autocomplete="off">
+    <div class="search-results" id="searchResults"></div>
+  </div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" id="tabHome" onclick="switchTab('feed',this)" title="হোম"><i class="fas fa-home"></i></button>
+    <button class="nav-tab" id="tabFriends" onclick="switchTab('friends',this)" title="বন্ধুরা"><i class="fas fa-user-friends"></i></button>
+    <button class="nav-tab" onclick="openMsgPage()" title="বার্তা"><i class="fas fa-comment-dots"></i></button>
+    <button class="nav-tab" onclick="toggleNotif()" title="নোটিফিকেশন" style="position:relative"><i class="fas fa-bell"></i></button>
+  </div>
+  <div class="nav-actions">
+    <button class="nav-icon-btn" onclick="toggleNotif()" title="বিজ্ঞপ্তি"><i class="fas fa-bell"></i><span class="badge" id="notifBadge" style="display:none">0</span></button>
+    <button class="nav-icon-btn" onclick="toggleFriendReqs()" title="বন্ধু অনুরোধ"><i class="fas fa-user-plus"></i><span class="badge" id="freqBadge" style="display:none">0</span></button>
+    <button class="nav-icon-btn" onclick="openMsgPage()" title="বার্তা" style="position:relative"><i class="fas fa-comment-dots"></i><span class="badge" id="msgBadge" style="display:none">0</span></button>
+    <img id="navAvatar" class="nav-avatar" src="" alt="avatar" onclick="toggleProfile()">
+  </div>
+</nav>
+
+<!-- NOTIFICATIONS PANEL -->
+<div class="notif-panel" id="notifPanel">
+  <div class="notif-header">বিজ্ঞপ্তি <span class="notif-mark-all" onclick="markAllRead()">সব পড়া হয়েছে</span></div>
+  <div id="notifList"></div>
+</div>
+
+<!-- FRIEND REQUESTS PANEL -->
+<div class="notif-panel" id="freqPanel" style="right:60px;max-height:70vh;overflow-y:auto;">
+  <div class="notif-header">বন্ধু অনুরোধ</div>
+  <div id="freqList" style="padding:8px"></div>
+</div>
+
+<!-- PROFILE DROPDOWN -->
+<div class="profile-dropdown" id="profileDropdown">
+  <div class="pd-user" onclick="viewProfile(currentUser?.uid)" style="cursor:pointer">
+    <img id="pdAvatar" src="" alt="">
+    <div class="pd-user-info">
+      <h4 id="pdName"></h4>
+      <span id="pdEmail"></span>
+    </div>
+  </div>
+  <div class="pd-divider"></div>
+  <div class="pd-item" onclick="viewProfile(currentUser?.uid)"><div class="pd-item-icon"><i class="fas fa-user"></i></div><span>প্রোফাইল দেখুন</span></div>
+  <div class="pd-item" onclick="openEditProfile()"><div class="pd-item-icon"><i class="fas fa-edit"></i></div><span>প্রোফাইল সম্পাদনা</span></div>
+  <div class="pd-item"><div class="pd-item-icon"><i class="fas fa-cog"></i></div><span>সেটিংস ও গোপনীয়তা</span></div>
+  <div class="pd-item"><div class="pd-item-icon"><i class="fas fa-question-circle"></i></div><span>সাহায্য ও সহায়তা</span></div>
+  <div class="pd-item"><div class="pd-item-icon"><i class="fas fa-moon"></i></div><span>ডার্ক মোড</span><label style="margin-left:auto"><input type="checkbox" id="darkModeToggle" onchange="toggleDarkMode(this.checked)"></label></div>
+  <div class="pd-divider"></div>
+  <div class="pd-item" onclick="logout()"><div class="pd-item-icon"><i class="fas fa-sign-out-alt"></i></div><span>লগআউট</span></div>
+</div>
+
+<!-- MAIN APP (FEED) -->
+<div id="mainApp">
+  <div class="main-grid">
+
+    <!-- LEFT SIDEBAR -->
+    <div class="left-col">
+      <div class="left-user" id="leftUser" onclick="viewProfile(currentUser?.uid)">
+        <img id="leftAvatar" src="" alt="">
+        <span id="leftName"></span>
+      </div>
+      <div class="menu-divider"></div>
+      <div class="menu-item" onclick="switchTab('friends',document.getElementById('tabFriends'))"><div class="mi-icon" style="background:#e7f3ff;color:var(--primary)"><i class="fas fa-user-friends"></i></div><span>বন্ধুরা</span></div>
+      <div class="menu-divider"></div>
+      <div style="padding:8px;font-size:.82rem;color:var(--text-secondary)">গোপনীয়তা · শর্তাবলী<br><strong style="color:var(--primary)">© 2025 HeraSoft</strong><br>Post.HS — সর্বস্বত্ব সংরক্ষিত</div>
+    </div>
+
+    <!-- CENTER FEED -->
+    <div class="center-col" id="centerCol">
+      <!-- Tab contents -->
+      <div id="feedTab" class="tab-content active">
+
+        <!-- Stories -->
+        <div class="stories-row" id="storiesRow">
+          <div class="story-add-card" onclick="document.getElementById('storyModal').classList.add('show')">
+            <img id="storyMeAvatar" src="" alt="">
+            <div class="story-add-plus"><i class="fas fa-plus"></i></div>
+            <div class="story-add-label">স্টোরি যোগ করুন</div>
+          </div>
+          <div id="storiesContainer" style="display:contents"></div>
+        </div>
+
+        <!-- Create Post -->
+        <div class="create-post">
+          <div class="cp-top">
+            <img id="cpAvatar" class="cp-avatar" src="" alt="" onclick="viewProfile(currentUser?.uid)" style="cursor:pointer">
+            <button class="cp-input" onclick="openPostModal()">আপনার মনে কী আছে, <span id="cpName"></span>?</button>
+          </div>
+          <div class="cp-divider"></div>
+          <div class="cp-actions">
+            <div class="cp-action" onclick="openPostModal('photo')"><i class="fas fa-images" style="color:#45bd62"></i> ছবি/ভিডিও</div>
+            <div class="cp-action" onclick="openPostModal('feeling')"><i class="fas fa-face-smile" style="color:#f7b928"></i> অনুভূতি</div>
+            <div class="cp-action" onclick="openPostModal('checkin')"><i class="fas fa-map-marker-alt" style="color:#f02849"></i> চেক-ইন</div>
+          </div>
+        </div>
+
+        <!-- Feed -->
+        <div id="feedContainer">
+          <div class="loader"><div class="spinner"></div>পোস্ট লোড হচ্ছে...</div>
+        </div>
+      </div>
+
+      <!-- Friends Tab -->
+      <div id="friendsTab" class="tab-content">
+        <div id="friendsContent"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT SIDEBAR -->
+    <div class="right-col">
+      <div class="widget-title">স্পনসরড</div>
+      <div style="background:var(--white);border-radius:var(--radius);padding:12px;margin-bottom:16px;box-shadow:var(--shadow);cursor:pointer" onclick="showToast('HeraSoft Technologies')">
+        <div style="background:linear-gradient(135deg,#667eea,#764ba2);height:100px;border-radius:8px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.5rem;font-weight:700">HS</div>
+        <div style="font-weight:600;font-size:.9rem;">HeraSoft Technologies</div>
+        <div style="font-size:.8rem;color:var(--text-secondary);">herasoft.com</div>
+      </div>
+
+      <div class="widget-title" style="margin-top:16px;">পরিচিত মানুষ</div>
+      <div id="pymkWidget"></div>
+
+      <div class="widget-title" style="margin-top:16px;">অনলাইন বন্ধুরা</div>
+      <div id="onlineFriends"></div>
+
+      <div class="widget-title" style="margin-top:16px;">জন্মদিন 🎂</div>
+      <div id="birthdayWidget" style="font-size:.9rem;color:var(--text-secondary);padding:6px 4px;">লোড হচ্ছে...</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- PROFILE PAGE -->
+<div id="profilePage">
+  <div class="profile-cover" id="profileCover">
+    <img id="profileCoverImg" src="" alt="" style="display:none">
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;" id="profileCoverPlaceholder">
+      <div style="background:linear-gradient(135deg,#667eea,#764ba2);width:100%;height:100%;"></div>
+    </div>
+    <div class="profile-cover-edit" id="coverEditBtn" onclick="changeCoverPhoto()"><i class="fas fa-camera"></i> কভার ফটো পরিবর্তন</div>
+  </div>
+  <div class="profile-main">
+    <div class="profile-info">
+      <div style="display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;">
+        <div class="profile-avatar-wrap">
+          <img class="profile-avatar" id="profileAvatar" src="" alt="">
+          <div class="profile-avatar-edit" id="avatarEditBtn" onclick="changeAvatar()"><i class="fas fa-camera"></i></div>
+        </div>
+        <div class="profile-details" style="flex:1">
+          <div class="profile-name" id="profilePageName"></div>
+          <div class="profile-bio" id="profilePageBio">আপনার বায়ো যোগ করুন...</div>
+          <div class="profile-stats" id="profileStats"></div>
+          <div class="profile-actions" id="profileActions"></div>
+        </div>
+      </div>
+      <div class="profile-tabs">
+        <div class="profile-tab active" onclick="switchProfileTab('posts',this)">পোস্ট</div>
+        <div class="profile-tab" onclick="switchProfileTab('about',this)">পরিচয়</div>
+        <div class="profile-tab" onclick="switchProfileTab('friends',this)">বন্ধুরা</div>
+        <div class="profile-tab" onclick="switchProfileTab('photos',this)">ছবি</div>
+      </div>
+    </div>
+    <div class="profile-grid">
+      <div>
+        <div class="profile-about-card" id="profileAboutCard">
+          <h3>পরিচয়</h3>
+          <div id="profileAboutContent"></div>
+        </div>
+        <div class="profile-about-card" id="profilePhotosCard">
+          <h3 style="margin-bottom:8px">ছবি</h3>
+          <div class="profile-photos-grid" id="profilePhotosGrid"></div>
+        </div>
+      </div>
+      <div id="profileFeedContainer"></div>
+    </div>
+  </div>
+</div>
+
+<!-- POST MODAL -->
+<div class="modal-overlay" id="postModal">
+  <div class="modal">
+    <div class="modal-header">
+      <button class="modal-close" onclick="closePostModal()"><i class="fas fa-times"></i></button>
+      <div class="modal-title">পোস্ট তৈরি করুন</div>
+      <div style="width:36px"></div>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <img id="modalAvatar" src="" alt="" style="width:42px;height:42px;border-radius:50%;">
+        <div>
+          <div id="modalName" style="font-weight:700;"></div>
+          <select id="postAudience" style="font-size:.8rem;border:1px solid var(--border);border-radius:6px;padding:2px 6px;">
+            <option value="public">🌐 সবাই</option>
+            <option value="friends">👥 বন্ধুরা</option>
+            <option value="only_me">🔒 শুধু আমি</option>
+          </select>
+        </div>
+      </div>
+      <div id="feelingDisplay" style="display:none;font-size:.9rem;color:var(--text-secondary);margin-bottom:8px;"></div>
+      <textarea class="post-textarea" id="postText" placeholder="আপনার মনে কী আছে?" maxlength="2000"></textarea>
+      <div id="postImageContainer" style="position:relative;display:none">
+        <img id="postImagePreview" class="post-image-preview" alt="">
+        <button onclick="removePostImage()" style="position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font-size:.9rem;display:flex;align-items:center;justify-content:center;"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="post-options-bar">
+        <span style="font-weight:600;font-size:.9rem;flex:1;">আপনার পোস্টে যোগ করুন</span>
+        <label title="ছবি"><i class="fas fa-images fa-lg" style="color:#45bd62;cursor:pointer"></i><input type="file" accept="image/*" style="display:none" id="postImageInput" onchange="previewImage(this)"></label>
+        <i class="fas fa-face-smile fa-lg" style="color:#f7b928;cursor:pointer" title="অনুভূতি" onclick="openFeelingPicker()"></i>
+        <i class="fas fa-map-marker-alt fa-lg" style="color:var(--red);cursor:pointer" title="লোকেশন" onclick="addLocation()"></i>
+        <i class="fas fa-user-tag fa-lg" style="color:var(--primary);cursor:pointer" title="বন্ধুকে ট্যাগ করুন"></i>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-post" id="postBtn" onclick="submitPost()">পোস্ট করুন</button>
+    </div>
+  </div>
+</div>
+
+<!-- FEELING PICKER MODAL -->
+<div class="modal-overlay" id="feelingModal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <button class="modal-close" onclick="document.getElementById('feelingModal').classList.remove('show')"><i class="fas fa-arrow-left"></i></button>
+      <div class="modal-title">অনুভূতি নির্বাচন করুন</div>
+      <div style="width:36px"></div>
+    </div>
+    <div class="modal-body" id="feelingList"></div>
+  </div>
+</div>
+
+<!-- STORY MODAL -->
+<div class="modal-overlay" id="storyModal">
+  <div class="modal">
+    <div class="modal-header">
+      <button class="modal-close" onclick="closeStoryModal()"><i class="fas fa-times"></i></button>
+      <div class="modal-title">স্টোরি তৈরি করুন</div>
+      <div style="width:36px"></div>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+        <div onclick="openStoryType('photo')" style="border:2px dashed var(--border);border-radius:var(--radius);padding:24px;text-align:center;cursor:pointer;transition:.15s;" onmouseenter="this.style.borderColor='var(--primary)'" onmouseleave="this.style.borderColor='var(--border)'">
+          <i class="fas fa-camera" style="font-size:2rem;color:var(--primary);display:block;margin-bottom:8px"></i>
+          <div style="font-weight:600;font-size:.9rem">ফটো স্টোরি</div>
+        </div>
+        <div onclick="openStoryType('text')" style="border:2px dashed var(--border);border-radius:var(--radius);padding:24px;text-align:center;cursor:pointer;transition:.15s;" onmouseenter="this.style.borderColor='var(--primary)'" onmouseleave="this.style.borderColor='var(--border)'">
+          <i class="fas fa-text-height" style="font-size:2rem;color:var(--green);display:block;margin-bottom:8px"></i>
+          <div style="font-weight:600;font-size:.9rem">টেক্সট স্টোরি</div>
+        </div>
+      </div>
+      <input type="file" id="storyImageInput" accept="image/*" style="display:none" onchange="previewStory(this)">
+      <div id="storyTextInput" style="display:none">
+        <textarea id="storyTextContent" placeholder="আপনার স্টোরি লিখুন..." style="width:100%;border:1px solid var(--border);border-radius:var(--radius);padding:12px;font-size:1rem;font-family:inherit;min-height:100px;resize:none;"></textarea>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;" id="storyBgColors">
+          <div onclick="setStoryBg('#1877f2')" style="width:32px;height:32px;border-radius:50%;background:#1877f2;cursor:pointer;border:2px solid transparent" onmouseenter="this.style.borderColor='#000'" onmouseleave="this.style.borderColor='transparent'"></div>
+          <div onclick="setStoryBg('#e74c3c')" style="width:32px;height:32px;border-radius:50%;background:#e74c3c;cursor:pointer;border:2px solid transparent" onmouseenter="this.style.borderColor='#000'" onmouseleave="this.style.borderColor='transparent'"></div>
+          <div onclick="setStoryBg('#27ae60')" style="width:32px;height:32px;border-radius:50%;background:#27ae60;cursor:pointer;border:2px solid transparent" onmouseenter="this.style.borderColor='#000'" onmouseleave="this.style.borderColor='transparent'"></div>
+          <div onclick="setStoryBg('#f39c12')" style="width:32px;height:32px;border-radius:50%;background:#f39c12;cursor:pointer;border:2px solid transparent" onmouseenter="this.style.borderColor='#000'" onmouseleave="this.style.borderColor='transparent'"></div>
+          <div onclick="setStoryBg('linear-gradient(135deg,#667eea,#764ba2)')" style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);cursor:pointer;border:2px solid transparent" onmouseenter="this.style.borderColor='#000'" onmouseleave="this.style.borderColor='transparent'"></div>
+        </div>
+      </div>
+      <img id="storyPreviewImg" style="display:none;width:100%;max-height:300px;object-fit:cover;border-radius:var(--radius);margin-top:8px" alt="">
+    </div>
+    <div class="modal-footer" id="storyModalFooter" style="display:none">
+      <button class="btn-post" onclick="submitStory()">স্টোরি শেয়ার করুন</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT PROFILE MODAL -->
+<div class="modal-overlay" id="editProfileModal">
+  <div class="modal">
+    <div class="modal-header">
+      <button class="modal-close" onclick="document.getElementById('editProfileModal').classList.remove('show')"><i class="fas fa-times"></i></button>
+      <div class="modal-title">প্রোফাইল সম্পাদনা</div>
+      <div style="width:36px"></div>
+    </div>
+    <div class="modal-body">
+      <label class="edit-label">নাম</label>
+      <input class="edit-input" id="editName" placeholder="আপনার নাম">
+      <label class="edit-label">বায়ো</label>
+      <textarea class="edit-input" id="editBio" placeholder="আপনার পরিচয় লিখুন..." style="min-height:80px;resize:vertical;"></textarea>
+      <label class="edit-label">শহর</label>
+      <input class="edit-input" id="editCity" placeholder="আপনার শহর">
+      <label class="edit-label">কর্মস্থল</label>
+      <input class="edit-input" id="editWork" placeholder="কর্মস্থল বা প্রতিষ্ঠান">
+      <label class="edit-label">শিক্ষা</label>
+      <input class="edit-input" id="editEducation" placeholder="বিদ্যালয়/বিশ্ববিদ্যালয়">
+      <label class="edit-label">জন্মতারিখ</label>
+      <input class="edit-input" type="date" id="editBirthday">
+      <label class="edit-label">ওয়েবসাইট</label>
+      <input class="edit-input" id="editWebsite" placeholder="https://...">
+    </div>
+    <div class="modal-footer">
+      <button class="btn-post" onclick="saveProfile()">সংরক্ষণ করুন</button>
+    </div>
+  </div>
+</div>
+
+<!-- SHARE MODAL -->
+<div class="modal-overlay" id="shareModal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <button class="modal-close" onclick="document.getElementById('shareModal').classList.remove('show')"><i class="fas fa-times"></i></button>
+      <div class="modal-title">শেয়ার করুন</div>
+      <div style="width:36px"></div>
+    </div>
+    <div class="modal-body">
+      <div class="share-option" onclick="shareToFeed()">
+        <div class="share-icon" style="background:var(--primary-light);color:var(--primary)"><i class="fas fa-share"></i></div>
+        <div><div class="share-option-name">ফিডে শেয়ার</div><div style="font-size:.8rem;color:var(--text-secondary)">আপনার টাইমলাইনে পোস্ট করুন</div></div>
+      </div>
+      <div class="share-option" onclick="copyPostLink()">
+        <div class="share-icon" style="background:#e8f5e9;color:#27ae60"><i class="fas fa-link"></i></div>
+        <div><div class="share-option-name">লিঙ্ক কপি করুন</div><div style="font-size:.8rem;color:var(--text-secondary)">পোস্টের লিঙ্ক কপি করুন</div></div>
+      </div>
+      <div class="share-option" onclick="shareViaMessage()">
+        <div class="share-icon" style="background:#fff3e0;color:#e67e22"><i class="fas fa-comment-dots"></i></div>
+        <div><div class="share-option-name">বার্তায় পাঠান</div><div style="font-size:.8rem;color:var(--text-secondary)">বন্ধুর কাছে পাঠান</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- IMAGE LIGHTBOX -->
+<div id="imageLightbox" onclick="closeLightbox()">
+  <div class="lightbox-close"><i class="fas fa-times"></i></div>
+  <img id="lightboxImg" src="" alt="">
+</div>
+
+<!-- STORY VIEWER -->
+<div id="storyViewer">
+  <div class="story-viewer-header">
+    <div class="story-progress-bars" id="storyProgressBars"></div>
+    <div class="story-user-info">
+      <img id="storyViewerAvatar" src="" alt="">
+      <div>
+        <span id="storyViewerName"></span>
+        <div class="story-user-time" id="storyViewerTime"></div>
+      </div>
+    </div>
+  </div>
+  <div class="story-close" onclick="closeStoryViewer()"><i class="fas fa-times"></i></div>
+  <div id="storyViewerContent"></div>
+  <div class="story-nav-btn prev" onclick="prevStory()"><i class="fas fa-chevron-left"></i></div>
+  <div class="story-nav-btn next" onclick="nextStory()"><i class="fas fa-chevron-right"></i></div>
+</div>
+
+<!-- VIDEO CALL -->
+<div class="video-call-overlay" id="videoCallOverlay">
+  <div class="vc-status" id="vcStatus">সংযোগ হচ্ছে...</div>
+  <div class="vc-videos">
+    <div><video id="localVideo" autoplay muted playsinline></video><div class="vc-label">আপনি</div></div>
+    <div><video id="remoteVideo" autoplay playsinline></video><div class="vc-label">রিমোট</div></div>
+  </div>
+  <div class="vc-controls">
+    <div class="vc-btn" id="vcMuteBtn" onclick="toggleMute()"><i class="fas fa-microphone"></i></div>
+    <div class="vc-btn" id="vcCamBtn" onclick="toggleCamera()"><i class="fas fa-video"></i></div>
+    <div class="vc-btn end" onclick="endCall()"><i class="fas fa-phone-slash"></i></div>
+  </div>
+</div>
+
+<!-- MESSAGES PAGE -->
+<div id="messagesPage" style="display:none;position:fixed;inset:0;top:var(--navbar-h);z-index:50;background:var(--bg);">
+  <div id="msgLayout" style="display:grid;grid-template-columns:340px 1fr;height:100%;">
+
+    <!-- Thread List -->
+    <div style="background:var(--white);border-right:1px solid var(--border);display:flex;flex-direction:column;height:100%;overflow:hidden;">
+      <div style="padding:14px 16px;border-bottom:1px solid var(--border);flex-shrink:0;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <span style="font-size:1.25rem;font-weight:800;">বার্তা</span>
+          <span onclick="closeMsgPage()" style="cursor:pointer;padding:6px;border-radius:50%;color:var(--text-secondary);transition:.15s;" onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background='transparent'">✕</span>
+        </div>
+        <div style="background:var(--bg);border-radius:50px;display:flex;align-items:center;gap:8px;padding:8px 14px;">
+          <i class="fas fa-search" style="color:var(--text-secondary);font-size:.82rem;"></i>
+          <input id="msgSearch" placeholder="খুঁজুন..." oninput="filterMsgList(this.value)" style="background:transparent;border:none;font-size:.88rem;width:100%;font-family:inherit;color:var(--text);outline:none;">
+        </div>
+      </div>
+      <div id="msgList" style="flex:1;overflow-y:auto;padding:6px 0;">
+        <div style="padding:20px;text-align:center;color:var(--text-secondary);font-size:.9rem;">লোড হচ্ছে...</div>
+      </div>
+    </div>
+
+    <!-- Chat Area (desktop) -->
+    <div id="msgChatArea" style="display:flex;flex-direction:column;height:100%;overflow:hidden;background:var(--bg);">
+      <div id="msgEmpty" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--text-secondary);">
+        <i class="fas fa-comment-dots" style="font-size:4rem;opacity:.2;"></i>
+        <p style="font-weight:700;font-size:1.05rem;">বার্তা পাঠান</p>
+        <p style="font-size:.88rem;">বাম দিক থেকে কাউকে বেছে নিন</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MESSAGES ACTIVE CHAT (fullscreen on mobile, right panel on desktop) -->
+<div id="msgChatBox" style="display:none;position:fixed;z-index:100;background:var(--white);flex-direction:column;overflow:hidden;">
+  <!-- Header -->
+  <div style="display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--white);border-bottom:1px solid var(--border);flex-shrink:0;">
+    <span id="msgBackBtn" onclick="closeMsgChat()" style="color:var(--primary);cursor:pointer;padding:4px 10px 4px 0;font-size:1.1rem;"><i class="fas fa-arrow-left"></i></span>
+    <div style="position:relative;">
+      <img id="msgPeerAv" src="" style="width:42px;height:42px;border-radius:50%;object-fit:cover;cursor:pointer;" onclick="viewProfile(msgPeerId)">
+      <div id="msgOnlineDot" style="display:none;position:absolute;bottom:1px;right:1px;width:12px;height:12px;border-radius:50%;background:var(--green);border:2px solid var(--white);"></div>
+    </div>
+    <div style="flex:1;min-width:0;">
+      <div id="msgPeerName" style="font-weight:700;font-size:.97rem;cursor:pointer;" onclick="viewProfile(msgPeerId)"></div>
+      <div id="msgPeerStatus" style="font-size:.76rem;color:var(--text-secondary);"></div>
+    </div>
+    <div style="display:flex;gap:4px;">
+      <div onclick="showToast('শীঘ্রই আসছে')" style="width:36px;height:36px;border-radius:50%;background:var(--bg);color:var(--primary);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.95rem;"><i class="fas fa-phone"></i></div>
+      <div onclick="showToast('শীঘ্রই আসছে')" style="width:36px;height:36px;border-radius:50%;background:var(--bg);color:var(--primary);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.95rem;"><i class="fas fa-video"></i></div>
+    </div>
+  </div>
+  <!-- Messages -->
+  <div id="msgBubbles" style="flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:4px;background:var(--bg);min-height:0;"></div>
+  <!-- Input - always at bottom -->
+  <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--white);border-top:1px solid var(--border);flex-shrink:0;">
+    <i class="fas fa-image" onclick="sendMsgPhoto()" style="color:var(--primary);font-size:1.15rem;cursor:pointer;padding:6px;border-radius:50%;"></i>
+    <input id="msgInput" placeholder="বার্তা লিখুন..." onkeydown="if(event.key==='Enter')sendMsgText()" style="flex:1;background:var(--bg);border:1.5px solid var(--border);border-radius:22px;padding:10px 16px;font-size:.9rem;font-family:inherit;color:var(--text);outline:none;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'">
+    <div onclick="sendMsgText()" style="width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;"><i class="fas fa-paper-plane" style="font-size:.82rem;"></i></div>
+  </div>
+</div>
+
+<!-- MOBILE BOTTOM NAV -->
+<div class="mobile-nav">
+  <div class="mobile-nav-items">
+    <div class="mobile-nav-item active" onclick="switchTab('feed',null);setMobileActive(this)"><i class="fas fa-home"></i><span>হোম</span></div>
+    <div class="mobile-nav-item" onclick="switchTab('friends',null);setMobileActive(this)"><i class="fas fa-user-friends"></i><span>বন্ধু</span></div>
+    <div class="mobile-nav-item" onclick="openPostModal();"><i class="fas fa-plus-circle" style="font-size:1.8rem;color:var(--primary)"></i><span></span></div>
+    <div class="mobile-nav-item" onclick="toggleNotif();setMobileActive(this)" style="position:relative"><i class="fas fa-bell"></i><span>নোটিফ</span><span id="mobileNotifBadge" style="display:none;position:absolute;top:2px;right:8px;background:#e74c3c;color:#fff;border-radius:50%;width:16px;height:16px;font-size:.6rem;font-weight:700;align-items:center;justify-content:center;">0</span></div>
+    <div class="mobile-nav-item" onclick="viewProfile(currentUser?.uid);setMobileActive(this)"><i class="fas fa-user"></i><span>প্রোফাইল</span></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="script.js"></script>
+</body>
+</html>
 
